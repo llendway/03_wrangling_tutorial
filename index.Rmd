@@ -1,0 +1,482 @@
+---
+title: "Expanding the data wrangling toolkit"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    code_download: true
+---
+
+## Setup
+
+Welcome to your second tutorial for this class, COMP/STAT 112: *Introduction to Data Science*! It will be similar to the first, although in this one I opted for introducing material right in the tutorial rather than creating separate videos and slide decks. There are still demo videos and files embedded in this document.
+
+As most of our files do, we start this one with three R code chunks: 1. options, 2. libraries and settings, 3. data. 
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r libraries}
+library(tidyverse)     # for data cleaning and plotting
+library(googlesheets4) # for reading googlesheet data
+library(lubridate)     # for date manipulation
+library(palmerpenguins)# for Palmer penguin data
+gs4_deauth()           # To not have to authorize each time you knit.
+```
+
+```{r my_libraries, include=FALSE}
+# Lisa needs this, students don't
+library(downloadthis) # for including download buttons for files
+library(flair) # for highlighting code
+```
+
+```{r data}
+# Lisa's garden data
+garden_harvest <- read_sheet("https://docs.google.com/spreadsheets/d/1DekSazCzKqPS2jnGhKue7tLxRU3GVL1oxi-4bEM5IWw/edit?usp=sharing") %>% 
+  mutate(date = ymd(date))
+
+# Palmer penguins
+
+data("penguins")
+
+# US tuition by state data
+us_avg_tuition <- read_csv("https://www.dropbox.com/s/9e0paradcwvuzll/us_avg_tuition.csv?dl=1") %>% 
+   mutate(across(starts_with("20"), parse_number))
+```
+
+## Learning Goals
+
+After this tutorial, you should be able to do the following:
+
+* Use `pivot_longer()` and `pivot_wider()`to change the way the data are laid out.  
+* Join tables of data together using the `dplyr` join functions and understand the differences among the different types of joins.  
+* Use various `forcats` functions, including ones not covered in the tutorial, to change the order or values of levels of categorical variables.  
+* Use the `stringr` functions covered in this tutorial (plus `separate()`) and know where to find information about other `stringr` functions (HINT: the cheatsheet is a great start).
+
+## Changing the data layout with pivot functions
+
+This part of the tutorial will introduce you to two functions: `pivot_longer()` and `pivot_wider()`. These functions are used to change the way the data are laid out. The GIF below illustrates what the functions do. I encourage you to revisit this illustration after reading through the more detailed descriptions.
+
+<center>
+
+![Image credit: Mara Averick (tweet from 2019-10-04)](https://www.dropbox.com/s/a6o75zj443b2rv3/tidyr-longer-wider-modified.gif?dl=1)
+
+</center>
+
+### `pivot_longer()`
+
+**`pivot_longer()`**: makes the dataset longer, reducing the number of columns and increasing the number of rows. Often used when column names should be values of a variable.
+
+The data below shows average college tuition costs in the US by state. Notice that years are column names.
+
+```{r, echo=FALSE}
+us_avg_tuition 
+```
+
+Now, we would like to change this so there is a variable called `year` that would indicate the year and the tuition values would be a sinle variable rather than spread across multiple variables - `pivot_longer()` to the rescue!
+
+The generic code for `pivot_longer()` is shown here:
+
+```{r, eval=FALSE}
+data %>% 
+  pivot_longer(cols = ___________,
+               names_to = "name_of_cols_variable",
+               values_to = "name_of_values_variable")
+```
+
+Let's try it with the tuition data:
+
+```{r pivot-longer-ex1}
+us_avg_tuition %>% 
+  pivot_longer(cols = starts_with("20"),
+               names_to = "year",
+               values_to = "avg_tuition")
+```
+
+Now there is a row for each unique state and year combination and `year` and `avg_tuition` are variables. This dataset has more rows and fewer columns than the original dataset.
+
+Let's go over each argument in the function in more detail.
+
+```{r, echo=FALSE}
+decorate_chunk("pivot-longer-ex1") %>% 
+  flair("cols = ") 
+```
+
+The `cols` argument indicates which columns should be pivoted so that these column names become values of a new variable. You can make a list of column names or use helper functions to select columns (see the `select()` function on the `dplyr` cheatsheet for more detail or search for `tidy-select` in  the Help tab). I used the `starts_with()` helper function in this example. 
+
+```{r, echo=FALSE}
+decorate_chunk("pivot-longer-ex1") %>% 
+  flair("names_to = ") 
+```
+
+The `names_to` argument is what you want to name the new variable where the column names will be stored. This needs to be in quotes.
+
+```{r, echo=FALSE}
+decorate_chunk("pivot-longer-ex1") %>% 
+  flair("values_to = ") 
+```
+
+The `values_to` argument is what you want to name the new variable where the values that used to be spread across multiple columns will now be stored in one variable.  
+
+### `pivot_wider()`
+
+`pivot_wider()`: makes the dataset wider, reducing the number of rows and increasing the number of columns. Often used when observations are spread over multiple rows and the values for one variable should actually be their own variables.
+
+Here is an example where the values of the third column (Population annual rate of increase (percent), Total fertility rate (children per women), etc.) should each be their own variable.
+
+<center>
+
+![Data from: https://data.un.org/](../../images/pivot_wider_example.png)
+
+</center>
+
+Now, let's look at a similar example. I created a new dataset called `penguins_fake` which is a reorganization of the  `penguins` data. 
+
+```{r, echo=FALSE}
+penguins_fake <- penguins %>% 
+  mutate(obs = row_number()) %>% 
+  pivot_longer(cols = bill_length_mm:body_mass_g,
+               names_to = "measurement",
+               values_to = "value")
+```
+
+```{r}
+penguins_fake
+```
+
+In `penguins_fake`, the column called `measurement` has all the names of the measurements. We would like to return those to column names so there is once again only one row for each penguin. We will use `pivot_wider()` to do that! Notice there is also a column called `obs` that identifies each unique observation from the original data - this is very important! 
+
+The generic code for `pivot_wider()` is shown here:
+
+```{r, eval=FALSE}
+data %>% 
+  pivot_wider(id_cols = ___________,
+              names_from = variable_with_names,
+              values_from = variable_with_values)
+```
+
+Let's do this with the `penguins_fake` data:
+
+```{r pivot-wider-ex1}
+penguins_fake %>% 
+  pivot_wider(id_cols = species:obs,
+              names_from = measurement,
+              values_from = value)
+```
+
+Now the four measurement variables each have their own column again. This dataset has more columns and fewer rows than the `penguins_fake` dataset.
+
+Let's go over each argument in the function in more detail.
+
+```{r, echo=FALSE}
+decorate_chunk("pivot-wider-ex1") %>% 
+  flair("id_cols = ") 
+```
+
+The `id_cols` argument is the set of columns that uniquely identifies each observation. By default it will be all columns that are not in the `names_from` and `values_from` arguments. Like `cols` from the `pivot_longer()` function, you can make a list of column names or use helper functions to select columns (see the `select()` function on the `dplyr` cheatsheet for more detail or search for `tidy-select` in  the Help tab).
+
+**!!CAUTION!!:** It is easy to make a mistake on the `id_cols` argument. For example, in the code below, I forgot to include `obs`. The result is something weird and unexpected with only 35 rows.
+
+```{r}
+penguins_fake %>% 
+  pivot_wider(id_cols = species:year,
+              names_from = measurement,
+              values_from = value)
+```
+
+```{r, echo=FALSE}
+decorate_chunk("pivot-wider-ex1") %>% 
+  flair("names_from =") 
+```
+
+The `names_from` argument is the variable (or variables) that contain values that you want to be turned into their own columns. This is *not* in quotes.
+
+```{r, echo=FALSE}
+decorate_chunk("pivot-wider-ex1") %>% 
+  flair("values_from =") 
+```
+
+The `values_from` argument is the variable (or variables) that should be values of the new variables.
+
+### Demo video
+
+Now that you've learned the basics of pivoting, watch the video below that will walk you through some coding examples and download the R Markdown files to follow along. This is the same file you will use for the other topics.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/k3SZ8keibuQ" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+[Voicethread: pivoting demo](https://voicethread.com/share/15375287/)
+
+```{r, echo=FALSE, eval=FALSE}
+download_file(
+  path = "03_wrangling_demo.Rmd",
+  button_label = "Download wrangling demo file (without code)",
+  button_type = "warning",
+  has_icon = TRUE,
+  icon = "fa fa-save",
+  self_contained = FALSE
+)
+```
+
+```{r, echo=FALSE}
+download_file(
+  path = "03_wrangling_demo.Rmd",
+  button_label = "Download wrangling demo file (with code)",
+  button_type = "info",
+  has_icon = TRUE,
+  icon = "fa fa-save",
+  self_contained = FALSE
+)
+```
+
+### Resources
+
+* [Slides](https://speakerdeck.com/yutannihilation/a-graphical-introduction-to-tidyrs-pivot-star) from Hiroaki Yutani  
+* [R4DS Chapter 12.3](https://r4ds.had.co.nz/tidy-data.html)
+
+### Your turn!
+
+
+
+## Joining datasets
+
+When analyzing data, it is common to need to combine together datasets that are related. The `join` verbs will give us a way to do this. For all joins we must establish a correspondance or match between each case in the left table and zero or more cases in the right table.
+
+A match between a case in the *left* table and a case in the *right* table is made based on the values in pairs of corresponding variables.
+
+* **You** specify which pairs to use.
+* A pair is a variable from the left table and a variable from the right table or a set of variables from the left and right table. 
+* Cases must have *exactly equal* values in the pair for a match to be made.
+
+When we join datasets, the general format is 
+
+```{r, eval=FALSE}
+left_dataset %>% 
+  <JOIN>(right_dataset, 
+         by=<HOW TO JOIN>)
+```
+
+where `left_dataset` and `right_dataset` are datasets, `<JOIN>` is the specific type of join, and `<HOW TO JOIN>` gives detailed information for how to do it. 
+
+The `by` argument tells it how to join the two datasets together, specifically which variables it should match. If the variables have the same names, we only need to write the name of that variable, in quotes: `by = "variable_name"`. 
+
+If the two variables to match have different names in the two datasets, we can write `by=c("name1"="name2")`, where `name1` is the variable in the left dataset to be matched to the `name2` variable in the right dataset. 
+
+We can also match on multiple variables using `by=c("name1"="name2", "name1a" = "name2a")`, where the names to the left of the equals are variables from the left dataset and those on the right of the equals are from the right dataset.  
+
+If the `by=` is omitted from a join, then `R` will perform a *natural join*, which matches the two datasets by all variables they have in common. It is good practice to always include the `by=`.
+
+Let's discuss the different types of joins.
+
+### Mutating joins
+
+The first class of joins are mutating joins, which add new variables (columns) to the left data table from matching observations in the right table.
+
+The main difference in the three mutating join options in this class is how they answer the following questions:
+
+1. What happens when a case in the right table has no matches in the left table?
+2. What happens when a case in the left table has no matches in the right table?
+
+Three mutating join functions:
+
+**`left_join()`**: the output has all cases from the left, regardless if there is a match in the right, but discards any cases in the right that do not have a match in the left. (There is also a **`right_join()`** function which which does the opposite.)
+
+![Image credit: Wickham, R for Data Science](../../images/left_right_join.png)
+
+![Credit: Garrick Aden-Buie – @grrrck](https://raw.githubusercontent.com/gadenbuie/tidyexplain/master/images/left-join.gif){width=300}
+
+**`inner_join()`**: the output has only the cases from the left with a match in the right.
+
+![Image credit: Wickham, R for Data Science](../../images/inner_join.png)
+
+![Credit: Garrick Aden-Buie – @grrrck](https://raw.githubusercontent.com/gadenbuie/tidyexplain/master/images/inner-join.gif){width=300}
+
+**`full_join()`**: the output has all cases from the left and the right. This is less common than the first two join operators.
+
+![Image credit: Wickham, R for Data Science](../../images/full_join.png)
+
+![Credit: Garrick Aden-Buie – @grrrck](https://raw.githubusercontent.com/gadenbuie/tidyexplain/master/images/full-join.gif){width=300}
+
+When there are multiple matches in the right table for a particular case in the left table, all three of these mutating join operators produce a separate case in the new table for each of the matches from the right.
+
+#### Examples
+
+First, create two small datasets:
+
+```{r}
+general_info <- tibble(
+  person_id = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+  age = c(34, 54, 67, 92, 21, 32, 18, 45, 34, 55),
+  rent_or_own = c("rent", "rent", "own", "rent", "rent", "own", "rent", "own", "own", "own")
+)
+
+general_info
+
+pet_info <- tibble(
+  person_id = c(2,3,5,7,8,10,11,12,13,14,15),
+  pet_owner = c("yes", "no", "no", "yes", "yes", "no", "no", "no", "yes", "no", "no")
+)
+
+pet_info
+```
+
+1. Start with `general_info` and `left_join()` the `pet_info` by `person_id`:
+
+```{r}
+general_info %>% 
+  left_join(pet_info, 
+            by = "person_id")
+```
+
+The resulting table has 10 rows of data - the 10 observations from `general_info`. There are missing values for `pet_owner` for `person_id`'s that were in the `general_info` table and not the `pet_info` table.
+
+**???** How would the results change if a `right_join()` was used in the code above rather than a `left_join()`?
+
+2. Start with `general_info` and `inner_join()` the `pet_info` by `person_id`:
+
+```{r}
+general_info %>% 
+  inner_join(pet_info, 
+             by = "person_id")
+```
+
+The resulting table is only 6 rows with the observations that are in both `general_info` and `pet_info`.
+
+3. Start with `general_info` and `full_join()` the `pet_info` by `person_id`:
+
+```{r}
+general_info %>% 
+  full_join(pet_info, 
+            by = "person_id")
+```
+
+The resulting table has 15 rows. There are missing values for `pet_owner` for `person_id`'s that were in the `general_info` table and not the `pet_info` table, and there are missing values for `age` and `rent` for for `person_id`'s that were in the `pet_info` table and not the `general_info` table.
+
+### Filtering joins
+
+The second class of joins are filtering joins, which select specific cases from the left table based on whether they match an observation in the right table.
+
+**`semi_join()`**: discards any cases in the left table that do not have a match in the right table. If there are multiple matches of right cases to a left case, it keeps just one copy of the left case.
+
+![Image credit: Wickham, R for Data Science](../../images/semi_join.png)
+
+![Credit: Garrick Aden-Buie – @grrrck](https://raw.githubusercontent.com/gadenbuie/tidyexplain/master/images/semi-join.gif){width=300}
+
+**`anti_join()`**: discards any cases in the left table that have a match in the right table.
+
+![Image credit: Wickham, R for Data Science](../../images/anti_join.png)
+
+![Credit: Garrick Aden-Buie – @grrrck](https://raw.githubusercontent.com/gadenbuie/tidyexplain/master/images/anti-join.gif){width=300}
+
+#### Example
+
+These use the example data from the previous section
+
+A `semi_join()` is used to find the age and rental status (information in the `general_info` table) for people who are pet owners:
+
+```{r}
+general_info %>% 
+  semi_join(pet_info %>% filter(pet_owner == "yes"), 
+            by = "person_id") 
+```
+
+This returns a table with 3 rows. Since these are small tables, you should go verify this by hand. Also notice I did not press enter after the `%>%` inside the `semi_join()`. This is one case where we leave it on the same line to make it more readable.
+
+Use an `anti_join()` to find the age and rental status (information in the `general_info` table) for people who are not confirmed pet owners (notice this includes unknowns):
+
+```{r}
+general_info %>% 
+  anti_join(pet_info %>% filter(pet_owner == "yes"),
+            by = "person_id")
+```
+
+### Demo video
+
+Now watch the video below that will walk you through some more advanced coding examples (plus a cameo by my daughter, Hadley). The downloadable R Markdown files to follow along are found below the pivoting video.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/MJDHRtwZhoM" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+[Voicethread: joining demo](https://voicethread.com/share/15392351/)
+
+
+### Resources
+
+* [Animated GIFs](https://github.com/gadenbuie/tidyexplain)  
+* [R4DS Chapter 13](https://r4ds.had.co.nz/relational-data.html)  
+* [Join Cheatsheet](https://stat545.com/join-cheatsheet.html) by Jenny Bryan
+
+
+### Your turn!
+
+## Using `forcats` functions with factors
+
+R calls categorical variables factors. They are slightly different from character variables, but I will skip talking about this detail right now. The unique values that factor variables take are called levels. 
+
+There are many times we might want to modify factors. Below I list the functions I will demonstrate in the video. These are the ones I use most often, but there are many other useful functions. Check out the `forcats` cheatsheet (see link below) to see all of them.  I highly recommend having it open when you work through the "Your turn!" exercises. 
+
+**Changing the order of levels**  
+`fct_relevel()`: manually reorder levels  
+`fct_infreq()`: order levels from highest to lowest frequency  
+`fct_reorder()`: reorder levels by values of another variable  
+`fct_rev()`: reverse the current order
+
+**Changing the values of levels**  
+`fct_recode()`: manually change levels  
+`fct_lump()`: group together least common levels
+
+### Demo video
+
+Watch the video below that illustrates these functions. The downloadable R Markdown files to follow along are found below the pivoting video.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/rv4IwnLcr98" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+[Voicethread: working with factors](https://voicethread.com/share/15394260/)
+
+### Resources
+
+* [R4DS Chapter 15](https://r4ds.had.co.nz/factors.html)  
+* [`forcats` Cheatsheet](https://rstudio.com/resources/cheatsheets/) (search for `forcats`)
+
+
+### Your turn!
+
+## Helpful functions to work with strings
+
+Strings are found in the cells of character variables. For example, in the dataset I created below, each of the names in the name column is a string.
+
+```{r echo=FALSE}
+family <- tibble(name = c("Lisa Lendway", "Chris Fischer", "Adeline Lendway", "Hadley Lendway"),
+                 adult = c(TRUE, TRUE, FALSE, FALSE))
+family
+```
+
+Here are the functions I will discuss in the video. This is just a small sample of the functions you could use to work with strings. Most of them are from the `stringr` package and start with `str_`. These functions all rely on something called regular expressions: regex or regexp, for short. 
+
+`separate()`: separates a character variable into multiple variables  
+`str_length()`: gives the number of characters in the string (includes white space, punctuation, etc.)  
+`str_to_lower()`: makes the characters lowercase  
+`str_sub()`: extract part of a string  
+`str_detect()`: returns TRUE/FALSE if a pattern is in the string
+
+### Demo
+
+Watch the video below that illustrates these functions. The downloadable R Markdown files to follow along are found below the pivoting video.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/__pJ_u94LZg" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+[Voicethread: working with strings](https://voicethread.com/share/15398384/)
+
+### Resources
+
+* [R4DS Chapter 14](https://r4ds.had.co.nz/strings.html)  
+* [`stringr` Cheatsheet](https://github.com/rstudio/cheatsheets/blob/master/strings.pdf)
+
+
+### Your turn!
+
+
+
+
+
+
