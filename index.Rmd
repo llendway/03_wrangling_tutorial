@@ -37,8 +37,19 @@ library(flair) # for highlighting code
 garden_harvest <- read_sheet("https://docs.google.com/spreadsheets/d/1DekSazCzKqPS2jnGhKue7tLxRU3GVL1oxi-4bEM5IWw/edit?usp=sharing") %>% 
   mutate(date = ymd(date))
 
-# Palmer penguins
+# Seeds/plants (and other garden supply) costs
+supply_costs <- read_sheet("https://docs.google.com/spreadsheets/d/1dPVHwZgR9BxpigbHLnA0U99TtVHHQtUzNB9UR0wvb7o/edit?usp=sharing",
+  col_types = "ccccnn")
 
+# Planting dates and locations
+plant_date_loc <- read_sheet("https://docs.google.com/spreadsheets/d/11YH0NtXQTncQbUse5wOsTtLSKAiNogjUA21jnX5Pnl4/edit?usp=sharing",
+  col_types = "cccnDlc")%>% 
+  mutate(date = ymd(date))
+
+# Garden layout
+garden_plot <- read_sheet("https://docs.google.com/spreadsheets/d/1jg6TTJWZhzaUo2WvW30g3bHbNPA4RD5nNs8l0HNSiaM/edit?usp=sharing")
+
+# Palmer penguins
 data("penguins")
 
 # US tuition by state data
@@ -210,7 +221,7 @@ Now that you've learned the basics of pivoting, watch the video below that will 
 
 ```{r, echo=FALSE, eval=FALSE}
 download_file(
-  path = "03_wrangling_demo.Rmd",
+  path = "03_wrangling_demo_no_code.Rmd",
   button_label = "Download wrangling demo file (without code)",
   button_type = "warning",
   has_icon = TRUE,
@@ -237,6 +248,21 @@ download_file(
 
 ### Your turn!
 
+#### Exercise 1: `pivot_wider()`
+
+Summarize the `garden_harvest` data to find the total harvest weight in pounds for each vegetable and day of week. Display the results so that the vegetables are rows but the days of the week are columns.
+
+```{r}
+
+```
+
+#### Exercise 2: `pivot_longer()`
+
+Use the `billboard` dataset (search for it in help or type `?billboard` in the console). It has rankings of songs for each week they entered the Billboard Top 100. The weeks are column names. Use `pivot_longer()` to make weeks a single column and remove rows with missing values for rank (HINT: use `values_drop_na` argument in `pivot_longer()`).
+
+```{r}
+
+```
 
 
 ## Joining datasets
@@ -409,6 +435,27 @@ Now watch the video below that will walk you through some more advanced coding e
 
 ### Your turn!
 
+#### Exercise 1: mutating join
+
+Summarize the `garden_harvest` data to find the total harvest in pound for each vegetable variety and then try adding the plot from the `plant_date_loc` table. This will not turn out perfectly. What is the problem? How might you fix it?
+
+```{r}
+
+```
+
+#### Exercise 2: mutating join
+
+I would like to understand how much money I "saved" by gardening, for each vegetable type. Describe how I could use the `garden_harvest` and `supply_cost` datasets, along with data from somewhere like [this](https://products.wholefoodsmarket.com/search?sort=relevance&store=10542) to answer this question. You can answer this in words, referencing various join functions. You don't need R code but could provide some if it's helpful.
+
+#### Exercise 3: filtering join
+
+Exclude the vegetable varieties from `garden_harvest` that are in plots M and H. 
+
+```{r}
+
+```
+
+
 ## Using `forcats` functions with factors
 
 R calls categorical variables factors. They are slightly different from character variables, but I will skip talking about this detail right now. The unique values that factor variables take are called levels. 
@@ -438,8 +485,31 @@ Watch the video below that illustrates these functions. The downloadable R Markd
 * [R4DS Chapter 15](https://r4ds.had.co.nz/factors.html)  
 * [`forcats` Cheatsheet](https://rstudio.com/resources/cheatsheets/) (search for `forcats`)
 
-
 ### Your turn!
+
+#### Exercise 1: changing order of factors
+
+Subset the data to tomatoes. Reorder the tomato varieties from smallest to largest first harvest date. Create a barplot of total harvest in pounds for each variety, in the new order.
+
+```{r}
+
+```
+
+#### Exercise 2: changing order of factors
+
+Reverse the order of the varieties in the previous plot.
+
+```{r}
+
+```
+
+#### Exercise 3: changing the values of levels
+
+Combine the tomato varieties of volunteers and grape to a new level: "small tomatoes".
+
+```{r}
+
+```
 
 ## Helpful functions to work with strings
 
@@ -475,8 +545,99 @@ Watch the video below that illustrates these functions. The downloadable R Markd
 
 ### Your turn!
 
+#### Exercise 1: working with strings
 
+In the `garden_harvest` data, create two new variables: one that makes the varieties lowercase and another that finds the length of the variety name.
 
+#### Exercise 2: working with strings
 
+Find all the varieties that have "er" or "ar" in their name.
 
+## Hints to exercises
 
+#### Exercise 1: `pivot_wider()`
+
+Summarize the `garden_harvest` data to find the total harvest weight in pounds for each vegetable and day of week. Display the results so that the vegetables are rows but the days of the week are columns.
+
+```{r, eval=FALSE}
+garden_harvest %>% 
+  mutate(day_of_week = ) %>% 
+  group_by(vegetable, day_of_week) %>% 
+  summarize() %>% 
+  pivot_wider()
+```
+
+#### Exercise 2: `pivot_longer()`
+
+Use the `billboard` dataset (search for it in help or type `?billboard` in the console). It has rankings of songs for each week they entered the Billboard Top 100. The weeks are column names. Use `pivot_longer()` to make weeks a single column and remove rows with missing values for rank (HINT: use `values_drop_na` argument in `pivot_longer()`).
+
+```{r, eval=FALSE}
+billboard %>% 
+  pivot_longer()
+```
+
+#### Exercise 1: mutating join
+
+Summarize the `garden_harvest` data to find the total harvest in pound for each vegetable variety and then try adding the plot from the `plant_date_loc` table. This will not turn out perfectly. What is the problem? How might you fix it?
+
+```{r, eval=FALSE}
+garden_harvest %>% 
+  group_by(vegetable, variety) %>% 
+  summarize() %>% 
+  left_join(plant_date_loc,
+            by = )
+```
+
+#### Exercise 2: mutating join
+
+I would like to understand how much money I "saved" by gardening, for each vegetable type. Describe how I could use the `garden_harvest` and `supply_cost` datasets, along with data from somewhere like [this](https://products.wholefoodsmarket.com/search?sort=relevance&store=10542) to answer this question. You can answer this in words, referencing various join functions. You don't need R code but could provide some if it's helpful.
+
+#### Exercise 3: filtering join
+
+Exclude the vegetable varieties from `garden_harvest` that are in plots M and H. 
+
+```{r, eval=FALSE}
+garden_harvest %>% 
+  anti_join(plant_date_loc,
+            by = )
+```
+
+#### Exercise 1: changing order of factors
+
+Subset the data to tomatoes. Reorder the tomato varieties from smallest to largest first harvest date. Create a barplot of total harvest in pounds for each variety, in the new order.
+
+```{r, eval=FALSE}
+garden_harvest %>% 
+  filter(vegetable == "tomatoes") %>% 
+  mutate(variety = fct_reorder(___))
+  group_by(variety) %>% 
+  summarize(___) %>% 
+  ggplot() +
+  ___
+```
+
+#### Exercise 2: changing order of factors
+
+Reverse the order of the varieties in the previous plot.
+
+```{r}
+
+```
+
+#### Exercise 3: changing the values of levels
+
+Combine the tomato varieties of volunteers and grape to a new level: "small tomatoes".
+
+HINT: `fct_relevel()`
+
+#### Exercise 1: working with strings
+
+In the `garden_harvest` data, create two new variables: one that makes the varieties lowercase and another that finds the length of the variety name.
+
+HINT: `str_to_lower()`, `str_length()`
+
+#### Exercise 2: working with strings
+
+Find all the varieties that have "er" or "ar" in their name.
+
+HINT: `str_detect()` and use or, "|"
