@@ -46,9 +46,6 @@ plant_date_loc <- read_sheet("https://docs.google.com/spreadsheets/d/11YH0NtXQTn
   col_types = "cccnDlc")%>% 
   mutate(date = ymd(date))
 
-# Garden layout
-garden_plot <- read_sheet("https://docs.google.com/spreadsheets/d/1jg6TTJWZhzaUo2WvW30g3bHbNPA4RD5nNs8l0HNSiaM/edit?usp=sharing")
-
 # Palmer penguins
 data("penguins")
 
