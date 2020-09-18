@@ -216,7 +216,7 @@ Now that you've learned the basics of pivoting, watch the video below that will 
 
 [Voicethread: pivoting demo](https://voicethread.com/share/15375287/)
 
-```{r, echo=FALSE, eval=FALSE}
+```{r, echo=FALSE}
 download_file(
   path = "03_wrangling_demo_no_code.Rmd",
   button_label = "Download wrangling demo file (without code)",
