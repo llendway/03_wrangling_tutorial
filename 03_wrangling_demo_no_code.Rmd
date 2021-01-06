@@ -14,28 +14,23 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
 ```{r libraries}
 library(tidyverse)     # for data cleaning and plotting
-library(googlesheets4) # for reading googlesheet data
+library(gardenR)       # for Lisa's garden data
 library(lubridate)     # for date manipulation
 library(palmerpenguins)# for Palmer penguin data
-gs4_deauth()           # To not have to authorize each time you knit.
 ```
 
 ```{r data}
 # Lisa's garden data
-garden_harvest <- read_sheet("https://docs.google.com/spreadsheets/d/1DekSazCzKqPS2jnGhKue7tLxRU3GVL1oxi-4bEM5IWw/edit?usp=sharing") %>% 
-  mutate(date = ymd(date))
+data("garden_harvest")
 
 # Seeds/plants (and other garden supply) costs
-supply_costs <- read_sheet("https://docs.google.com/spreadsheets/d/1dPVHwZgR9BxpigbHLnA0U99TtVHHQtUzNB9UR0wvb7o/edit?usp=sharing",
-  col_types = "ccccnn")
+data("garden_spending")
 
 # Planting dates and locations
-plant_date_loc <- read_sheet("https://docs.google.com/spreadsheets/d/11YH0NtXQTncQbUse5wOsTtLSKAiNogjUA21jnX5Pnl4/edit?usp=sharing",
-  col_types = "cccnDlc")%>% 
-  mutate(date = ymd(date))
+data("garden_planting")
 
 # Garden layout
-garden_plot <- read_sheet("https://docs.google.com/spreadsheets/d/1jg6TTJWZhzaUo2WvW30g3bHbNPA4RD5nNs8l0HNSiaM/edit?usp=sharing")
+data("garden_coords")
 
 # Palmer penguins
 data("penguins")
@@ -130,13 +125,14 @@ Although this is no longer tidy data, it is a much nicer way to look at the summ
 The tutorial gave you some nice, simple examples of joins. I find that joining tables very quickly gets messy. So one good piece of advice I have is to always sketch out (and talk aloud!) what you're trying to do, first, before setting out to code it. And, have a pretty good idea of how many rows you expect the resulting join to have BEFORE doing the join.
 
 First, let me show you the layout of my garden as well as I can:
+
 ```{r, fig.width=5, fig.height=6}
-for_labs <- garden_plot %>% 
+for_labs <- garden_coords %>% 
   group_by(plot) %>% 
   summarize(x = mean(x),
             y = mean(y))
 
-garden_plot %>% 
+garden_coords %>% 
   ggplot(aes(x = x, y = y, group = plot)) +
   geom_polygon() +
   geom_text(data = for_labs, 
@@ -146,11 +142,11 @@ garden_plot %>%
   theme(panel.background = element_rect(fill = "lightgray"))
 ```
 
-Now, let me introduce you to some new garden data! Let's open up the new ones and take a look (also look at where the datasets are loaded).
+Now, let me introduce you to some new garden data! Let's open up the new ones and take a look (also look at where the datasets are loaded). **NOTE: I have recently updated this file to read in the data from the `gardenR` library. So, the datasets have different names than in the demo video.**
 
 ### Example 1
 
-I would like to investigate the question: how many days from the date the variety of vegetable was planted did I get my first harvest? That means I need to join information from the `plant_date_loc` table to the `garden_harvest` table. 
+I would like to investigate the question: how many days from the date the variety of vegetable was planted did I get my first harvest? That means I need to join information from the `garden_planting` table to the `garden_harvest` table. 
 
 First, I try joining them by `vegetable` and `variety`. I am expecting to get the same number of rows that are in the `garden_harvest` dataset:
 
@@ -164,13 +160,13 @@ Unfortunately, when I collected the garden data, I did *not* keep track of the p
 
 There were also vegetable varieties that I planted on multiple dates. This will lead to a similar problem.
 
-So, to answer the question we are interested, I am going to summarize the `plant_date_loc` dataset first. For each vegetable and variety, I will find the minimum date. I will save that as a new dataset called `plant_min_date`.
+So, to answer the question we are interested, I am going to summarize the `garden_planting` dataset first. For each vegetable and variety, I will find the minimum date. I will save that as a new dataset called `plant_min_date`.
 
 ```{r}
 
 ```
 
-Notice `plant_min_date` has fewer rows than `plant_date_loc`.
+Notice `plant_min_date` has fewer rows than `garden_planting`.
 
 Now let's join this dataset to the `garden_harvest` data:
 
@@ -220,7 +216,7 @@ garden_harvest %>%
 
 ### Example 2
 
-I may only want to analyze data from vegetables that are a certain seed brand. Let's only keep `garden_harvest` data from seeds that are "Renee's Garden" brand. We will start with the `garden_harvest` data and `semi_join()` to a filtered subset of the `supply_costs` data.
+I may only want to analyze data from vegetables that are a certain seed brand. Let's only keep `garden_harvest` data from seeds that are "Renee's Garden" brand. We will start with the `garden_harvest` data and `semi_join()` to a filtered subset of the `garden_spending` data.
 
 ```{r}
 

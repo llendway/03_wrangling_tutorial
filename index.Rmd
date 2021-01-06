@@ -20,10 +20,9 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
 ```{r libraries}
 library(tidyverse)     # for data cleaning and plotting
-library(googlesheets4) # for reading googlesheet data
+library(gardenR)       # for Lisa's garden data
 library(lubridate)     # for date manipulation
 library(palmerpenguins)# for Palmer penguin data
-gs4_deauth()           # To not have to authorize each time you knit.
 ```
 
 ```{r my_libraries, include=FALSE}
@@ -34,17 +33,13 @@ library(flair) # for highlighting code
 
 ```{r data}
 # Lisa's garden data
-garden_harvest <- read_sheet("https://docs.google.com/spreadsheets/d/1DekSazCzKqPS2jnGhKue7tLxRU3GVL1oxi-4bEM5IWw/edit?usp=sharing") %>% 
-  mutate(date = ymd(date))
+data("garden_harvest")
 
 # Seeds/plants (and other garden supply) costs
-supply_costs <- read_sheet("https://docs.google.com/spreadsheets/d/1dPVHwZgR9BxpigbHLnA0U99TtVHHQtUzNB9UR0wvb7o/edit?usp=sharing",
-  col_types = "ccccnn")
+data("garden_spending")
 
 # Planting dates and locations
-plant_date_loc <- read_sheet("https://docs.google.com/spreadsheets/d/11YH0NtXQTncQbUse5wOsTtLSKAiNogjUA21jnX5Pnl4/edit?usp=sharing",
-  col_types = "cccnDlc")%>% 
-  mutate(date = ymd(date))
+data("garden_planting")
 
 # Palmer penguins
 data("penguins")
@@ -434,7 +429,7 @@ Now watch the video below that will walk you through some more advanced coding e
 
 #### Exercise 1: mutating join
 
-Summarize the `garden_harvest` data to find the total harvest in pound for each vegetable variety and then try adding the plot from the `plant_date_loc` table. This will not turn out perfectly. What is the problem? How might you fix it?
+Summarize the `garden_harvest` data to find the total harvest in pound for each vegetable variety and then try adding the plot from the `garden_planting` table. This will not turn out perfectly. What is the problem? How might you fix it?
 
 ```{r}
 
@@ -442,7 +437,7 @@ Summarize the `garden_harvest` data to find the total harvest in pound for each 
 
 #### Exercise 2: mutating join
 
-I would like to understand how much money I "saved" by gardening, for each vegetable type. Describe how I could use the `garden_harvest` and `supply_cost` datasets, along with data from somewhere like [this](https://products.wholefoodsmarket.com/search?sort=relevance&store=10542) to answer this question. You can answer this in words, referencing various join functions. You don't need R code but could provide some if it's helpful.
+I would like to understand how much money I "saved" by gardening, for each vegetable type. Describe how I could use the `garden_harvest` and `garden_spending` datasets, along with data from somewhere like [this](https://products.wholefoodsmarket.com/search?sort=relevance&store=10542) to answer this question. You can answer this in words, referencing various join functions. You don't need R code but could provide some if it's helpful.
 
 #### Exercise 3: filtering join
 
@@ -587,7 +582,7 @@ garden_harvest %>%
 
 #### Exercise 2: mutating join
 
-I would like to understand how much money I "saved" by gardening, for each vegetable type. Describe how I could use the `garden_harvest` and `supply_cost` datasets, along with data from somewhere like [this](https://products.wholefoodsmarket.com/search?sort=relevance&store=10542) to answer this question. You can answer this in words, referencing various join functions. You don't need R code but could provide some if it's helpful.
+I would like to understand how much money I "saved" by gardening, for each vegetable type. Describe how I could use the `garden_harvest` and `garden_spending` datasets, along with data from somewhere like [this](https://products.wholefoodsmarket.com/search?sort=relevance&store=10542) to answer this question. You can answer this in words, referencing various join functions. You don't need R code but could provide some if it's helpful.
 
 #### Exercise 3: filtering join
 
@@ -595,7 +590,7 @@ Exclude the vegetable varieties from `garden_harvest` that are in plots M and H.
 
 ```{r, eval=FALSE}
 garden_harvest %>% 
-  anti_join(plant_date_loc,
+  anti_join(garden_planting,
             by = )
 ```
 
